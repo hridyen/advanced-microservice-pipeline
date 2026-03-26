@@ -6,5 +6,5 @@ app.get('/', (req, res) => {
 });
 
 app.listen(3003, () => {
-    console.log('Login service running on port 3003');
+    console.log('Login service run on port 3003');
 });
