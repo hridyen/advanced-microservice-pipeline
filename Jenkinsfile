@@ -24,6 +24,7 @@ pipeline {
                     for (changeLog in currentBuild.changeSets) {
                         for (entry in changeLog.items) {
                             for (file in entry.affectedFiles) {
+                                def filePath = file.path.toString().trim().replace("\\", "/")
                                 changedFiles.add(file.path)
                             }
                         }
@@ -31,17 +32,17 @@ pipeline {
 
                     echo "Changed Files: ${changedFiles}"
 
-                    changedFiles.each { file ->
+                    for (file in changedFiles) { 
 
-                        if (file.contains("auth-service")) {
+                        if (file.contains("auth-service/")) {
                             env.AUTH_CHANGED = "true"
                         }
 
-                        if (file.contains("config-service")) {
+                        if (file.contains("config-service/")) {
                             env.CONFIG_CHANGED = "true"
                         }
 
-                        if (file.contains("login-service")) {
+                        if (file.contains("login-service/")) {
                             env.LOGIN_CHANGED = "true"
                         }
                     }
