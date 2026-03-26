@@ -71,7 +71,7 @@ pipeline {
                     }
                     steps {
                         dir('auth-service') {
-                            sh 'docker build -t auth-service .'
+                            sh 'DOCKER_BUILDKIT=0 docker build -t auth-service .'
                         }
                     }
                 }
@@ -82,7 +82,7 @@ pipeline {
                     }
                     steps {
                         dir('config-service') {
-                            sh 'docker build -t config-service .'
+                            sh 'DOCKER_BUILDKIT=0 docker build -t config-service .'
                         }
                     }
                 }
@@ -93,7 +93,7 @@ pipeline {
                     }
                     steps {
                         dir('login-service') {
-                            sh 'docker build -t login-service .'
+                            sh 'DOCKER_BUILDKIT=0 docker build -t login-service .'
                         }
                     }
                 }
