@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 
 app.get('/', (req, res) => {
-    res.send('Login Service Running 🔑');
+    res.send('Login Service Running');
 });
 
 app.listen(3003, () => {
