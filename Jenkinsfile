@@ -34,18 +34,24 @@ pipeline {
 
                     for (file in changedFiles) { 
 
-                        if (file.contains("auth-service/")) {
+                        if (file.contains("auth-service")) {
                             env.AUTH_CHANGED = "true"
                         }
 
-                        if (file.contains("config-service/")) {
+                        if (file.contains("config-service")) {
                             env.CONFIG_CHANGED = "true"
                         }
 
-                        if (file.contains("login-service/")) {
+                        if (file.contains("login-service")) {
                             env.LOGIN_CHANGED = "true"
                         }
                     }
+
+                    //  NOW assign to env 
+                    env.AUTH_CHANGED   = authChanged.toString()
+                    env.CONFIG_CHANGED = configChanged.toString()
+                    env.LOGIN_CHANGED  = loginChanged.toString()
+
 
                     echo "AUTH_CHANGED: ${env.AUTH_CHANGED}"
                     echo "CONFIG_CHANGED: ${env.CONFIG_CHANGED}"
