@@ -9,14 +9,14 @@ pipeline {
 
     stages {
 
-        // 🔹 Stage 1: Checkout Code
+        // 🔹 Checkout Code
         stage('Checkout Code') {
             steps {
                 checkout scm
             }
         }
 
-        // 🔹 Stage 2: Detect Changes (FIXED & STABLE)
+        // 🔹 Detect Changes (FINAL WORKING LOGIC)
         stage('Detect Changes') {
             steps {
                 script {
@@ -25,37 +25,37 @@ pipeline {
                     def configChanged = false
                     def loginChanged = false
 
-                    def changedFiles = []
+                    // 🔥 Get previous successful commit (best practice)
+                    def prevCommit = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT
 
-                    // 🔥 Jenkins native change detection
-                    for (changeLog in currentBuild.changeSets) {
-                        for (entry in changeLog.items) {
-                            for (file in entry.affectedFiles) {
-                                def filePath = file.path.toString().trim().replace("\\", "/")
-                                changedFiles.add(filePath)
-                            }
-                        }
-                    }
+                    if (!prevCommit) {
+                        echo "First build detected, marking all services as changed"
+                        authChanged = true
+                        configChanged = true
+                        loginChanged = true
+                    } else {
 
-                    echo "Changed Files: ${changedFiles}"
+                        def changedFiles = sh(
+                            script: "git diff --name-only ${prevCommit} HEAD",
+                            returnStdout: true
+                        ).trim()
 
-                    // 🔥 Detect which service changed
-                    for (file in changedFiles) {
+                        echo "Changed Files:\n${changedFiles}"
 
-                        if (file.contains("auth-service/")) {
+                        if (changedFiles.contains("auth-service/")) {
                             authChanged = true
                         }
 
-                        if (file.contains("config-service/")) {
+                        if (changedFiles.contains("config-service/")) {
                             configChanged = true
                         }
 
-                        if (file.contains("login-service/")) {
+                        if (changedFiles.contains("login-service/")) {
                             loginChanged = true
                         }
                     }
 
-                    // 🔥 Assign to env (IMPORTANT)
+                    // 🔥 Assign to env (stable way)
                     env.AUTH_CHANGED   = authChanged.toString()
                     env.CONFIG_CHANGED = configChanged.toString()
                     env.LOGIN_CHANGED  = loginChanged.toString()
@@ -67,7 +67,7 @@ pipeline {
             }
         }
 
-        // 🔹 Stage 3: Build Only Changed Services
+        // 🔹 Build Only Changed Services (Parallel)
         stage('Build Services') {
             parallel {
 
@@ -106,7 +106,7 @@ pipeline {
             }
         }
 
-        // 🔹 Stage 4: Run Only Changed Containers
+        // 🔹 Run Containers (Only Changed)
         stage('Run Containers') {
             steps {
                 script {
