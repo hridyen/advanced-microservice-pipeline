@@ -1,79 +1,66 @@
 pipeline {
-    agent any
-
-    environment {
-        AUTH_CHANGED   = "false"
-        CONFIG_CHANGED = "false"
-        LOGIN_CHANGED  = "false"
-    }
+    agent { label 'ubuntu-agent'}
 
     stages {
 
-        // 🔹 Checkout Code
         stage('Checkout Code') {
             steps {
                 checkout scm
             }
         }
 
-        // 🔹 Detect Changes (FINAL WORKING LOGIC)
         stage('Detect Changes') {
             steps {
                 script {
 
-                    def authChanged = false
-                    def configChanged = false
-                    def loginChanged = false
+                    // 🔥 GLOBAL VARIABLES (IMPORTANT)
+                    authChanged = false
+                    configChanged = false
+                    loginChanged = false
 
-                    // 🔥 Get previous successful commit (best practice)
                     def prevCommit = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT
 
+                    def changedFiles = ""
+
                     if (!prevCommit) {
-                        echo "First build detected, marking all services as changed"
+                        echo "First build → build everything"
                         authChanged = true
                         configChanged = true
                         loginChanged = true
                     } else {
-
-                        def changedFiles = sh(
+                        changedFiles = sh(
                             script: "git diff --name-only ${prevCommit} HEAD",
                             returnStdout: true
                         ).trim()
-
-                        echo "Changed Files:\n${changedFiles}"
-
-                        if (changedFiles.contains("auth-service/")) {
-                            authChanged = true
-                        }
-
-                        if (changedFiles.contains("config-service/")) {
-                            configChanged = true
-                        }
-
-                        if (changedFiles.contains("login-service/")) {
-                            loginChanged = true
-                        }
                     }
 
-                    // 🔥 Assign to env (stable way)
-                    env.AUTH_CHANGED   = authChanged.toString()
-                    env.CONFIG_CHANGED = configChanged.toString()
-                    env.LOGIN_CHANGED  = loginChanged.toString()
+                    echo "Changed Files:\n${changedFiles}"
 
-                    echo "AUTH_CHANGED: ${env.AUTH_CHANGED}"
-                    echo "CONFIG_CHANGED: ${env.CONFIG_CHANGED}"
-                    echo "LOGIN_CHANGED: ${env.LOGIN_CHANGED}"
+                    if (changedFiles.contains("auth-service/")) {
+                        authChanged = true
+                    }
+
+                    if (changedFiles.contains("config-service/")) {
+                        configChanged = true
+                    }
+
+                    if (changedFiles.contains("login-service/")) {
+                        loginChanged = true
+                    }
+
+                    echo "authChanged: ${authChanged}"
+                    echo "configChanged: ${configChanged}"
+                    echo "loginChanged: ${loginChanged}"
                 }
             }
         }
 
-        // 🔹 Build Only Changed Services (Parallel)
         stage('Build Services') {
             parallel {
 
-                stage('Build Auth Service') {
+                stage('Auth Service') {
                     when {
-                        expression { env.AUTH_CHANGED == "true" }
+                        expression { return authChanged == true }
                     }
                     steps {
                         dir('auth-service') {
@@ -82,9 +69,9 @@ pipeline {
                     }
                 }
 
-                stage('Build Config Service') {
+                stage('Config Service') {
                     when {
-                        expression { env.CONFIG_CHANGED == "true" }
+                        expression { return configChanged == true }
                     }
                     steps {
                         dir('config-service') {
@@ -93,9 +80,9 @@ pipeline {
                     }
                 }
 
-                stage('Build Login Service') {
+                stage('Login Service') {
                     when {
-                        expression { env.LOGIN_CHANGED == "true" }
+                        expression { return loginChanged == true }
                     }
                     steps {
                         dir('login-service') {
@@ -106,26 +93,25 @@ pipeline {
             }
         }
 
-        // 🔹 Run Containers (Only Changed)
         stage('Run Containers') {
             steps {
                 script {
 
-                    if (env.AUTH_CHANGED == "true") {
+                    if (authChanged) {
                         sh '''
                         docker rm -f auth-container || true
                         docker run -d -p 3001:3001 --name auth-container auth-service
                         '''
                     }
 
-                    if (env.CONFIG_CHANGED == "true") {
+                    if (configChanged) {
                         sh '''
                         docker rm -f config-container || true
                         docker run -d -p 3002:3002 --name config-container config-service
                         '''
                     }
 
-                    if (env.LOGIN_CHANGED == "true") {
+                    if (loginChanged) {
                         sh '''
                         docker rm -f login-container || true
                         docker run -d -p 3003:3003 --name login-container login-service
@@ -136,13 +122,12 @@ pipeline {
         }
     }
 
-    // 🔹 Post Actions
     post {
         success {
-            echo "Pipeline executed successfully "
+            echo "Pipeline executed successfully 🚀"
         }
         failure {
-            echo "Pipeline failed "
+            echo "Pipeline failed ❌"
         }
     }
 }
