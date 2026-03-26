@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'ubuntu-agent'}
+    agent any
 
     environment {
         AUTH_CHANGED   = "false"
@@ -9,49 +9,56 @@ pipeline {
 
     stages {
 
+        // 🔹 Stage 1: Checkout Code
         stage('Checkout Code') {
             steps {
                 checkout scm
             }
         }
 
+        // 🔹 Stage 2: Detect Changes (FIXED & STABLE)
         stage('Detect Changes') {
             steps {
                 script {
 
+                    def authChanged = false
+                    def configChanged = false
+                    def loginChanged = false
+
                     def changedFiles = []
 
+                    // 🔥 Jenkins native change detection
                     for (changeLog in currentBuild.changeSets) {
                         for (entry in changeLog.items) {
                             for (file in entry.affectedFiles) {
                                 def filePath = file.path.toString().trim().replace("\\", "/")
-                                changedFiles.add(file.path)
+                                changedFiles.add(filePath)
                             }
                         }
                     }
 
                     echo "Changed Files: ${changedFiles}"
 
-                    for (file in changedFiles) { 
+                    // 🔥 Detect which service changed
+                    for (file in changedFiles) {
 
-                        if (file.contains("auth-service")) {
-                            env.AUTH_CHANGED = "true"
+                        if (file.contains("auth-service/")) {
+                            authChanged = true
                         }
 
-                        if (file.contains("config-service")) {
-                            env.CONFIG_CHANGED = "true"
+                        if (file.contains("config-service/")) {
+                            configChanged = true
                         }
 
-                        if (file.contains("login-service")) {
-                            env.LOGIN_CHANGED = "true"
+                        if (file.contains("login-service/")) {
+                            loginChanged = true
                         }
                     }
 
-                    //  NOW assign to env 
+                    // 🔥 Assign to env (IMPORTANT)
                     env.AUTH_CHANGED   = authChanged.toString()
                     env.CONFIG_CHANGED = configChanged.toString()
                     env.LOGIN_CHANGED  = loginChanged.toString()
-
 
                     echo "AUTH_CHANGED: ${env.AUTH_CHANGED}"
                     echo "CONFIG_CHANGED: ${env.CONFIG_CHANGED}"
@@ -60,10 +67,11 @@ pipeline {
             }
         }
 
+        // 🔹 Stage 3: Build Only Changed Services
         stage('Build Services') {
             parallel {
 
-                stage('Auth Service Build') {
+                stage('Build Auth Service') {
                     when {
                         expression { env.AUTH_CHANGED == "true" }
                     }
@@ -74,7 +82,7 @@ pipeline {
                     }
                 }
 
-                stage('Config Service Build') {
+                stage('Build Config Service') {
                     when {
                         expression { env.CONFIG_CHANGED == "true" }
                     }
@@ -85,7 +93,7 @@ pipeline {
                     }
                 }
 
-                stage('Login Service Build') {
+                stage('Build Login Service') {
                     when {
                         expression { env.LOGIN_CHANGED == "true" }
                     }
@@ -98,6 +106,7 @@ pipeline {
             }
         }
 
+        // 🔹 Stage 4: Run Only Changed Containers
         stage('Run Containers') {
             steps {
                 script {
@@ -127,6 +136,7 @@ pipeline {
         }
     }
 
+    // 🔹 Post Actions
     post {
         success {
             echo "Pipeline executed successfully "
