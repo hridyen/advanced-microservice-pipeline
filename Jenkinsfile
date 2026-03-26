@@ -1,5 +1,10 @@
+// Global variables (must be defined outside pipeline block)
+def authChanged = false
+def configChanged = false
+def loginChanged = false
+
 pipeline {
-    agent { label 'ubuntu-agent'}
+    agent { label 'ubuntu-agent' }
 
     stages {
 
@@ -13,39 +18,41 @@ pipeline {
             steps {
                 script {
 
-                    // 🔥 GLOBAL VARIABLES (IMPORTANT)
+                    // Reset variables explicitly (important for safety)
                     authChanged = false
                     configChanged = false
                     loginChanged = false
 
                     def prevCommit = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT
-
                     def changedFiles = ""
 
                     if (!prevCommit) {
-                        echo "First build → build everything"
+                        echo "First build detected. Building all services."
+
                         authChanged = true
                         configChanged = true
                         loginChanged = true
+
                     } else {
+
                         changedFiles = sh(
                             script: "git diff --name-only ${prevCommit} HEAD",
                             returnStdout: true
                         ).trim()
-                    }
 
-                    echo "Changed Files:\n${changedFiles}"
+                        echo "Changed Files:\n${changedFiles}"
 
-                    if (changedFiles.contains("auth-service/")) {
-                        authChanged = true
-                    }
+                        if (changedFiles.contains("auth-service/")) {
+                            authChanged = true
+                        }
 
-                    if (changedFiles.contains("config-service/")) {
-                        configChanged = true
-                    }
+                        if (changedFiles.contains("config-service/")) {
+                            configChanged = true
+                        }
 
-                    if (changedFiles.contains("login-service/")) {
-                        loginChanged = true
+                        if (changedFiles.contains("login-service/")) {
+                            loginChanged = true
+                        }
                     }
 
                     echo "authChanged: ${authChanged}"
@@ -58,9 +65,9 @@ pipeline {
         stage('Build Services') {
             parallel {
 
-                stage('Auth Service') {
+                stage('Build Auth Service') {
                     when {
-                        expression { return authChanged == true }
+                        expression { authChanged }
                     }
                     steps {
                         dir('auth-service') {
@@ -69,9 +76,9 @@ pipeline {
                     }
                 }
 
-                stage('Config Service') {
+                stage('Build Config Service') {
                     when {
-                        expression { return configChanged == true }
+                        expression { configChanged }
                     }
                     steps {
                         dir('config-service') {
@@ -80,9 +87,9 @@ pipeline {
                     }
                 }
 
-                stage('Login Service') {
+                stage('Build Login Service') {
                     when {
-                        expression { return loginChanged == true }
+                        expression { loginChanged }
                     }
                     steps {
                         dir('login-service') {
@@ -124,10 +131,10 @@ pipeline {
 
     post {
         success {
-            echo "Pipeline executed successfully 🚀"
+            echo "Pipeline executed successfully"
         }
         failure {
-            echo "Pipeline failed ❌"
+            echo "Pipeline failed"
         }
     }
 }
