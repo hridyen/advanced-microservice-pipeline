@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 
 app.get('/', (req, res) => {
-    res.send('Auth Service Running for test ');
+    res.send('Auth Service Running  test ');
 });
 
 app.listen(3001, () => {
