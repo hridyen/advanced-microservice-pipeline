@@ -33,15 +33,15 @@ pipeline {
 
                     changedFiles.each { file ->
 
-                        if (file.startsWith("auth-service/")) {
+                        if (file.contains("auth-service")) {
                             env.AUTH_CHANGED = "true"
                         }
 
-                        if (file.startsWith("config-service/")) {
+                        if (file.contains("config-service")) {
                             env.CONFIG_CHANGED = "true"
                         }
 
-                        if (file.startsWith("login-service/")) {
+                        if (file.contains("login-service")) {
                             env.LOGIN_CHANGED = "true"
                         }
                     }
